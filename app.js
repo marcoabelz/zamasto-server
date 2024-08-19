@@ -4,13 +4,26 @@ if (process.env.NODE_ENV !== "production") {
 
 const { generateToken } = require("./helpers/jwt");
 const authentication = require("./middlewares/authentication");
-
 const express = require("express");
+const cors = require("cors");
+const { projects, blogs, services } = require("./models");
+
+const multer = require("multer");
+
+const { v2: cloudinary } = require("cloudinary");
+
 const app = express();
 // const port = process.env.port || 3000;
-const cors = require("cors");
 
-const { projects, blogs, services } = require("./models");
+// Multer configuration
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
@@ -47,16 +60,62 @@ app.post("/admin/login", async (req, res) => {
 
 app.use(authentication);
 
-app.post("/admin/projects", async (req, res) => {
-  const { name, image } = req.body;
-  const data = await projects.create({ name, image });
-  res.status(201).json(data);
+//multer + cloudinary
+app.post("/admin/projects", upload.single("image"), async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !req.file) {
+      return res.status(400).json({ message: "Name and image file are required" });
+    }
+    let file = req.file;
+    console.log(file, "file");
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream({ resource_type: "auto" }, (error, result) => {
+        if (error) {
+          return reject(error);
+        }
+        resolve(result);
+      });
+
+      uploadStream.end(file.buffer);
+    });
+    await projects.create({ name, image: result.url });
+    res.status(200).json({ message: "Image uploaded and data saved", image: result.url });
+  } catch (error) {
+    console.log(error);
+  }
 });
 
 app.get("/admin/projects", async (req, res) => {
   const data = await projects.findAll();
   res.status(200).json(data);
 });
+
+app.put("/admin/projects/:id", upload.single("image"), async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !req.file) {
+      return res.status(400).json({ message: "Name and image file are required" });
+    }
+    let file = req.file;
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream({ resource_type: "auto" }, (error, result) => {
+        if (error) {
+          return reject(error);
+        }
+        resolve(result);
+      });
+
+      uploadStream.end(file.buffer);
+    });
+    await projects.update({ name, image: result.url }, { where: { id: req.params.id } });
+    res.status(200).json({ message: "Image uploaded and data saved", image: result.url });
+  } catch (error) {
+    console.log(error);
+  }
+});
+
+
 
 app.delete("/admin/projects/:id", async (req, res) => {
   await projects.destroy({
