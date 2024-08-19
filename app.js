@@ -68,7 +68,6 @@ app.post("/admin/projects", upload.single("image"), async (req, res) => {
       return res.status(400).json({ message: "Name and image file are required" });
     }
     let file = req.file;
-    console.log(file, "file");
     const result = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream({ resource_type: "auto" }, (error, result) => {
         if (error) {
@@ -115,8 +114,6 @@ app.put("/admin/projects/:id", upload.single("image"), async (req, res) => {
   }
 });
 
-
-
 app.delete("/admin/projects/:id", async (req, res) => {
   await projects.destroy({
     where: {
@@ -129,6 +126,38 @@ app.delete("/admin/projects/:id", async (req, res) => {
 app.get("/admin/projects/:id", async (req, res) => {
   const data = await projects.findByPk(req.params.id);
   res.status(200).json(data);
+});
+
+app.post("/admin/blogs", upload.single("cover_image"), async (req, res) => {
+  try {
+    const { title, content } = req.body;
+    if (!title || !content || !req.file) {
+      return res.status(400).json({ message: "title, content and image file are required" });
+    }
+    let file = req.file;
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream({ resource_type: "auto" }, (error, result) => {
+        if (error) {
+          return reject(error);
+        }
+        resolve(result);
+      });
+      uploadStream.end(file.buffer);
+    });
+    await blogs.create({ title, content, cover_image: result.url });
+    res.status(201).json({ message: "Image uploaded and data saved", cover_image: result.url });
+  } catch (error) {
+    console.log(error);
+  }
+});
+
+app.delete("/admin/blogs/:id", async (req, res) => {
+  await blogs.destroy({
+    where: {
+      id: req.params.id,
+    },
+  });
+  res.status(200).json({ message: "Blog Deleted" });
 });
 
 module.exports = app;
