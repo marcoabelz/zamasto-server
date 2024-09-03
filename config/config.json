@@ -1,8 +1,8 @@
 {
   "development": {
-    "username": "postgres",
-    "password": "postgres",
-    "database": "zamasto_db",
+    "username": "zamastoi_adminDB",
+    "password": "jO{(JcqKWwue",
+    "database": "zamastoi_compro_zamasto_db",
     "host": "127.0.0.1",
     "dialect": "postgres"
   },

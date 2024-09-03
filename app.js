@@ -27,7 +27,18 @@ cloudinary.config({
 
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
-app.use(cors());
+// app.use(cors());
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || "*",
+    methods: "GET,POST,PUT,DELETE",
+    allowedHeaders: "Content-Type,Authorization",
+  })
+);
+
+app.get("/", async (req, res) => {
+  res.status(200).json({ message: "API - Zamasto", status: "Running ..." });
+});
 
 app.get("/projects", async (req, res) => {
   const data = await projects.findAll();
